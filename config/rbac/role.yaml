@@ -5,7 +5,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - networking.k8s.io.d464.sh
+  - networking.k8s.io
   resources:
   - ingresses
   verbs:
@@ -17,13 +17,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - networking.k8s.io.d464.sh
+  - networking.k8s.io
   resources:
   - ingresses/finalizers
   verbs:
   - update
 - apiGroups:
-  - networking.k8s.io.d464.sh
+  - networking.k8s.io
   resources:
   - ingresses/status
   verbs:
