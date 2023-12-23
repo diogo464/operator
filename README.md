@@ -1,6 +1,19 @@
 # labels
 // TODO(user): Add simple overview of use/purpose
 
+## ingress
+
+Some annotations are provided for ingresses:
+```yaml
+metadata:
+  annotations:
+    # enable/disable a public ingress.
+    # enabling this will create a second ingress that exposes the service to the public.
+    infra.d464.sh/ingress-public: "true"
+    # enabling this will force the connections to use ssl
+    infra.d464.sh/ingress-force-ssl: "true"
+```
+
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
 

@@ -18,9 +18,9 @@ package controller
 
 import (
 	"context"
+	"strings"
 
 	netv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -30,8 +30,23 @@ import (
 )
 
 const (
-	ANNOTATION_INGRESS_PUBLIC = "infra.d464.sh/ingress-public"
-	INGRESS_CLASS_PUBLIC      = "nginx-external"
+	// the ingress class to use for the public ingress
+	INGRESS_CLASS_PUBLIC = "nginx-external"
+
+	ANNOTATION_INGRESS_FORCE_SSL = "infra.d464.sh/ingress-force-ssl"
+	ANNOTATION_INGRESS_PUBLIC    = "infra.d464.sh/ingress-public"
+
+	ANNOTATION_INGRESS_NGINX_FORCE_SSL = "nginx.ingress.kubernetes.io/force-ssl-redirect"
+	// annotation to place on the private ingress to exclude it from external-dns
+	ANNOTATION_INGRESS_EXTERNAL_DNS_EXCLUDE = "external-dns.alpha.kubernetes.io/exclude"
+)
+
+var (
+	// prefixes to filter out of the public ingress annotations
+	ANNOTATION_PUBLIC_FILTER_PREFIXES = []string{
+		"hajimari.io",
+		ANNOTATION_INGRESS_PUBLIC, // delete this to prevent infinite recursion
+	}
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -55,60 +70,98 @@ type IngressReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
+	ingress := &netv1.Ingress{}
 
-	ing := &netv1.Ingress{}
-	if err := r.Get(ctx, req.NamespacedName, ing); err != nil {
-		if errors.IsNotFound(err) {
-			l.Info("Ingress resource not found. Ignoring since object must be deleted")
-		} else {
-			l.Error(err, "Failed to get Ingress")
-		}
+	if strings.HasSuffix(req.Name, "-public") {
+		req.Name = strings.TrimSuffix(req.Name, "-public")
+	}
+
+	if err := r.Get(ctx, req.NamespacedName, ingress); err == nil {
+		return r.ReconcileIngress(ctx, ingress)
+	} else {
+		l.Error(err, "Failed to get ingress")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
-	l.Info("Ingress", "name", ing.Name, "namespace", ing.Namespace, "annotations", ing.ObjectMeta.Annotations)
-
-	if ing.ObjectMeta.Annotations[ANNOTATION_INGRESS_PUBLIC] == "true" {
-		ingc := ing.DeepCopy()
-
-		class := INGRESS_CLASS_PUBLIC
-		annotations := ingc.ObjectMeta.Annotations
-		annotations[ANNOTATION_INGRESS_PUBLIC] = "false"
-		spec := ingc.Spec
-		spec.IngressClassName = &class
-
-		ingp := netv1.Ingress{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        ing.ObjectMeta.Name + "-public",
-				Namespace:   ing.ObjectMeta.Namespace,
-				Annotations: annotations,
-				Labels:      ing.ObjectMeta.Labels,
-			},
-			Spec: spec,
-		}
-		if err := controllerutil.SetControllerReference(ing, &ingp, r.Scheme); err != nil {
-			l.Error(err, "Failed to set controller reference")
-			return ctrl.Result{}, err
-		}
-
-		l.Info("Creating Ingress", "name", ingp.Name, "namespace", ingp.Namespace)
-		if err := r.Create(ctx, &ingp); err != nil {
-			l.Error(err, "Failed to create Ingress")
-			return ctrl.Result{}, err
-		}
-		l.Info("Ingress created", "name", ingp.Name, "namespace", ingp.Namespace)
-	} else {
-		l.Info("Ingress is not public", "name", ing.Name, "namespace", ing.Namespace, "ingress-public", ing.ObjectMeta.Annotations[ANNOTATION_INGRESS_PUBLIC])
-	}
-
-	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&netv1.Ingress{}).
-		// Uncomment the following line adding a pointer to an instance of the controlled resource as an argument
-		// For().
 		Complete(r)
+}
+
+func (r *IngressReconciler) ReconcileIngress(ctx context.Context, ing *netv1.Ingress) (ctrl.Result, error) {
+	l := log.FromContext(ctx)
+	l.Info("Reconcile ingress", "name", ing.Name, "namespace", ing.Namespace, "annotations", ing.ObjectMeta.Annotations)
+
+	l.Info("Annotations for "+ing.Name, "annotations", ing.Annotations)
+	ing.Annotations = r.expandAnnotations(ing.Annotations, false)
+	l.Info("Expanded annotations for "+ing.Name, "annotations", ing.Annotations)
+	if err := r.Client.Update(ctx, ing); err != nil {
+		l.Error(err, "Failed to update Ingress")
+		return ctrl.Result{}, err
+	}
+
+	if ing.ObjectMeta.Annotations[ANNOTATION_INGRESS_PUBLIC] == "true" {
+		l.Info("Ingress is public", "name", ing.Name, "namespace", ing.Namespace)
+		publicIngress := &netv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ing.ObjectMeta.Name + "-public", Namespace: ing.ObjectMeta.Namespace}}
+		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, publicIngress, func() error {
+			reference := ing.DeepCopy()
+			publicIngressClass := INGRESS_CLASS_PUBLIC
+			publicIngress.ObjectMeta.Labels = reference.ObjectMeta.Labels
+			publicIngress.ObjectMeta.Annotations = r.expandAnnotations(reference.ObjectMeta.Annotations, true)
+			publicIngress.Spec = reference.Spec
+			publicIngress.Spec.IngressClassName = &publicIngressClass
+			if err := controllerutil.SetControllerReference(ing, publicIngress, r.Scheme); err != nil {
+				l.Error(err, "Failed to set controller reference")
+				return err
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			l.Error(err, "Failed to create or update Ingress")
+			return ctrl.Result{}, err
+		}
+	} else {
+		l.Info("Ingress is not public", "name", ing.Name, "namespace", ing.Namespace)
+		if err := r.Delete(ctx, &netv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ing.ObjectMeta.Name + "-public", Namespace: ing.ObjectMeta.Namespace}}); err != nil {
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
+	}
+
+	return ctrl.Result{}, nil
+}
+
+func (r *IngressReconciler) expandAnnotations(annotations map[string]string, isPublic bool) map[string]string {
+	expanded := make(map[string]string)
+	for key, value := range annotations {
+		expanded[key] = value
+	}
+
+	if isPublic {
+		for key := range annotations {
+			for _, prefix := range ANNOTATION_PUBLIC_FILTER_PREFIXES {
+				if strings.HasPrefix(key, prefix) {
+					delete(expanded, key)
+				}
+			}
+		}
+		expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_EXCLUDE] = "false"
+	} else {
+		// we don't want to expose the private ingress to external-dns
+		expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_EXCLUDE] = "true"
+	}
+
+	if v, ok := expanded[ANNOTATION_INGRESS_FORCE_SSL]; ok {
+		if v == "true" {
+			expanded[ANNOTATION_INGRESS_NGINX_FORCE_SSL] = "true"
+		} else {
+			expanded[ANNOTATION_INGRESS_NGINX_FORCE_SSL] = "false"
+		}
+	}
+
+	return expanded
 }
