@@ -6,7 +6,7 @@ domain: d464.sh
 layout:
 - go.kubebuilder.io/v4
 multigroup: true
-projectName: labels
+projectName: operator
 repo: git.d464.sh/infra/operator
 resources:
 - controller: true
