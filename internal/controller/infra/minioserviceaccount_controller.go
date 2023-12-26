@@ -18,7 +18,6 @@ package infra
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"math/rand"
 	"slices"
@@ -58,33 +57,18 @@ func newRandomMinioServiceAccountSecretData(url string) *minioServiceAccountSecr
 	}
 }
 
-func (d *minioServiceAccountSecretData) fromBase64Map(data map[string][]byte) error {
-	url, err := base64.StdEncoding.DecodeString(string(data["S3_URL"]))
-	if err != nil {
-		return err
-	}
-	d.Url = string(url)
-
-	accessKey, err := base64.StdEncoding.DecodeString(string(data["S3_ACCESS_KEY"]))
-	if err != nil {
-		return err
-	}
-	d.AccessKey = string(accessKey)
-
-	secretKey, err := base64.StdEncoding.DecodeString(string(data["S3_SECRET_KEY"]))
-	if err != nil {
-		return err
-	}
-	d.SecretKey = string(secretKey)
-
+func (d *minioServiceAccountSecretData) fromMap(data map[string][]byte) error {
+	d.Url = string(data["S3_URL"])
+	d.AccessKey = string(data["S3_ACCESS_KEY"])
+	d.SecretKey = string(data["S3_SECRET_KEY"])
 	return nil
 }
 
-func (d *minioServiceAccountSecretData) toBase64Map() map[string][]byte {
+func (d *minioServiceAccountSecretData) toMap() map[string][]byte {
 	return map[string][]byte{
-		"S3_URL":        []byte(base64.StdEncoding.EncodeToString([]byte(d.Url))),
-		"S3_ACCESS_KEY": []byte(base64.StdEncoding.EncodeToString([]byte(d.AccessKey))),
-		"S3_SECRET_KEY": []byte(base64.StdEncoding.EncodeToString([]byte(d.SecretKey))),
+		"S3_URL":        []byte(d.Url),
+		"S3_ACCESS_KEY": []byte(d.AccessKey),
+		"S3_SECRET_KEY": []byte(d.SecretKey),
 	}
 }
 
@@ -154,7 +138,7 @@ func (r *MinioServiceAccountReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if err := secretData.fromBase64Map(secret.Data); err != nil {
+	if err := secretData.fromMap(secret.Data); err != nil {
 		l.Error(err, "unable to decode secret for MinioServiceAccount", "account", acct.Name)
 		return ctrl.Result{}, err
 	}
@@ -275,7 +259,7 @@ func (r *MinioServiceAccountReconciler) garbageCollectServiceAccounts(ctx contex
 		}
 
 		secretData := &minioServiceAccountSecretData{}
-		if err := secretData.fromBase64Map(secret.Data); err != nil {
+		if err := secretData.fromMap(secret.Data); err != nil {
 			l.Error(err, "unable to decode secret for MinioServiceAccount", "account", minioAccount.Name)
 			return
 		}
@@ -315,7 +299,7 @@ func (r *MinioServiceAccountReconciler) getOrCreateSecretForAccount(ctx context.
 
 	secret.Name = secretName.Name
 	secret.Namespace = secretName.Namespace
-	secret.Data = secretData.toBase64Map()
+	secret.Data = secretData.toMap()
 	controllerutil.SetControllerReference(acct, &secret, r.Scheme)
 
 	if err := r.Create(ctx, &secret); err != nil {
