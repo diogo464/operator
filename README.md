@@ -14,6 +14,33 @@ metadata:
     infra.d464.sh/ingress-force-ssl: "true"
 ```
 
+## MinioServiceAccount
+
+This resource represents a service account in minio.
+It will create a secret with the credentials used to access minio.
+
+```yaml
+version: infra.d464.sh/v1
+kind: MinioServiceAccount
+metadata:
+  name: mads
+spec:
+  buckets: [mads]
+```
+
+The generate secret will look like:
+```yaml
+version: v1
+kind: Secret
+metadata:
+  name: mads-minio
+data:
+  S3_URL: http://minio.storage.svc.cluster.local:9000
+  S3_ACCESS_KEY: <access key>
+  S3_SECRET_KEY: <secret key>
+```
+
+
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
 

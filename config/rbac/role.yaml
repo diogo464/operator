@@ -5,6 +5,50 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets/status
+  verbs:
+  - get
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - minioserviceaccounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - minioserviceaccounts/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - minioserviceaccounts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - networking.k8s.io
   resources:
   - ingresses

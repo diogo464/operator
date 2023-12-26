@@ -14,4 +14,13 @@ resources:
   group: networking.k8s.io
   kind: Ingress
   version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: d464.sh
+  group: infra
+  kind: MinioServiceAccount
+  path: git.d464.sh/infra/operator/api/infra/v1
+  version: v1
 version: "3"
