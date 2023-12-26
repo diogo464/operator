@@ -89,8 +89,8 @@ spec:
         name: manager
         envFrom:
         - secretRef:
-          name: operator-config
-          optional: false
+            name: operator-config
+            optional: false
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
