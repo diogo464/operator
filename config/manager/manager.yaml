@@ -11,6 +11,19 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: system
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+    app.kubernetes.io/name: secret
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: operator
+    app.kubernetes.io/part-of: operator
+    app.kubernetes.io/managed-by: kustomize
+data:
+  minio_endpoint: ""
+  minio_access_key: ""
+  minio_secret_key: ""
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
