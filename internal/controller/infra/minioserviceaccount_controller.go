@@ -38,30 +38,27 @@ import (
 )
 
 const (
-	MINIO_ENDPOINT              = "minio.d464.sh:9000"
-	MINIO_USER                  = "9roGgChJcN9CKWRU"
-	MINIO_PASS                  = "5cIFY5CawwKc77KLuHKSxnAfo0HXrGNp"
 	MINIO_ACCESS_KEY_PREFIX     = "infra-"
 	MINIO_ACCESS_KEY_MAX_LENGTH = 20
 )
 
-type MinioServiceAccountSecretData struct {
+type minioServiceAccountSecretData struct {
 	Url       string
 	AccessKey string
 	SecretKey string
 }
 
-func NewRandomMinioServiceAccountSecretData(url string) *MinioServiceAccountSecretData {
+func newRandomMinioServiceAccountSecretData(url string) *minioServiceAccountSecretData {
 	randomName := MINIO_ACCESS_KEY_PREFIX + randomString(MINIO_ACCESS_KEY_MAX_LENGTH-len(MINIO_ACCESS_KEY_PREFIX))
 	randomKey := randomString(40)
-	return &MinioServiceAccountSecretData{
+	return &minioServiceAccountSecretData{
 		Url:       url,
 		AccessKey: randomName,
 		SecretKey: randomKey,
 	}
 }
 
-func (d *MinioServiceAccountSecretData) fromBase64Map(data map[string][]byte) error {
+func (d *minioServiceAccountSecretData) fromBase64Map(data map[string][]byte) error {
 	url, err := base64.StdEncoding.DecodeString(string(data["S3_URL"]))
 	if err != nil {
 		return err
@@ -83,7 +80,7 @@ func (d *MinioServiceAccountSecretData) fromBase64Map(data map[string][]byte) er
 	return nil
 }
 
-func (d *MinioServiceAccountSecretData) toBase64Map() map[string][]byte {
+func (d *minioServiceAccountSecretData) toBase64Map() map[string][]byte {
 	return map[string][]byte{
 		"S3_URL":        []byte(base64.StdEncoding.EncodeToString([]byte(d.Url))),
 		"S3_ACCESS_KEY": []byte(base64.StdEncoding.EncodeToString([]byte(d.AccessKey))),
@@ -91,11 +88,32 @@ func (d *MinioServiceAccountSecretData) toBase64Map() map[string][]byte {
 	}
 }
 
+type MinioServiceAccountReconcilerConfig struct {
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+}
+
 // MinioServiceAccountReconciler reconciles a MinioServiceAccount object
 type MinioServiceAccountReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	config *MinioServiceAccountReconcilerConfig
 	admin  *madmin.AdminClient
+}
+
+func NewMinioServiceAccountReconciler(client client.Client, scheme *runtime.Scheme, config *MinioServiceAccountReconcilerConfig) (*MinioServiceAccountReconciler, error) {
+	admin, err := madmin.New(config.MinioEndpoint, config.MinioAccessKey, config.MinioSecretKey, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return &MinioServiceAccountReconciler{
+		Client: client,
+		Scheme: scheme,
+		config: config,
+		admin:  admin,
+	}, nil
 }
 
 //+kubebuilder:rbac:groups=infra.d464.sh,resources=minioserviceaccounts,verbs=get;list;watch;create;update;patch;delete
@@ -129,7 +147,7 @@ func (r *MinioServiceAccountReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 	l.Info("reconciling MinioServiceAccount", "account", acct.Name)
 
-	secretData := &MinioServiceAccountSecretData{}
+	secretData := &minioServiceAccountSecretData{}
 	secret, err := r.getOrCreateSecretForAccount(ctx, &acct)
 	if err != nil {
 		l.Error(err, "unable to get or create secret for MinioServiceAccount", "account", acct.Name)
@@ -157,12 +175,6 @@ func (r *MinioServiceAccountReconciler) Reconcile(ctx context.Context, req ctrl.
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *MinioServiceAccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	admin, err := madmin.New(MINIO_ENDPOINT, MINIO_USER, MINIO_PASS, false)
-	if err != nil {
-		return err
-	}
-	r.admin = admin
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&infrav1.MinioServiceAccount{}).
 		Owns(&corev1.Secret{}).
@@ -172,7 +184,7 @@ func (r *MinioServiceAccountReconciler) SetupWithManager(mgr ctrl.Manager) error
 func (r *MinioServiceAccountReconciler) reconcileServiceAccount(ctx context.Context, accessKey, secretKey string, policy []byte) error {
 	l := log.FromContext(ctx)
 
-	existingAccounts, err := r.admin.ListServiceAccounts(ctx, MINIO_USER)
+	existingAccounts, err := r.admin.ListServiceAccounts(ctx, r.config.MinioAccessKey)
 	if err != nil {
 		l.Error(err, "unable to list MinioServiceAccounts")
 		return err
@@ -191,7 +203,7 @@ func (r *MinioServiceAccountReconciler) reconcileServiceAccount(ctx context.Cont
 		l.Info("creating new MinioServiceAccount", "account", accessKey)
 		if _, err := r.admin.AddServiceAccount(ctx, madmin.AddServiceAccountReq{
 			Policy:     policy,
-			TargetUser: MINIO_USER,
+			TargetUser: r.config.MinioAccessKey,
 			AccessKey:  accessKey,
 			SecretKey:  secretKey,
 		}); err != nil {
@@ -238,7 +250,7 @@ func (r *MinioServiceAccountReconciler) garbageCollectServiceAccounts(ctx contex
 	l := log.FromContext(ctx)
 	l.Info("garbage collecting MinioServiceAccounts")
 
-	accounts, err := r.admin.ListServiceAccounts(ctx, MINIO_USER)
+	accounts, err := r.admin.ListServiceAccounts(ctx, r.config.MinioAccessKey)
 	if err != nil {
 		l.Error(err, "unable to list MinioServiceAccounts")
 		return
@@ -262,7 +274,7 @@ func (r *MinioServiceAccountReconciler) garbageCollectServiceAccounts(ctx contex
 			return
 		}
 
-		secretData := &MinioServiceAccountSecretData{}
+		secretData := &minioServiceAccountSecretData{}
 		if err := secretData.fromBase64Map(secret.Data); err != nil {
 			l.Error(err, "unable to decode secret for MinioServiceAccount", "account", minioAccount.Name)
 			return
@@ -299,7 +311,7 @@ func (r *MinioServiceAccountReconciler) getOrCreateSecretForAccount(ctx context.
 	}
 
 	url := "http://minio.storage.svc.cluster.local:9000"
-	secretData := NewRandomMinioServiceAccountSecretData(url)
+	secretData := newRandomMinioServiceAccountSecretData(url)
 
 	secret.Name = secretName.Name
 	secret.Namespace = secretName.Namespace

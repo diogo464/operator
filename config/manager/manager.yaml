@@ -84,7 +84,8 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: git.d464.sh/infra/operator
+        image: git.d464.sh/infra/operator:latest
+        imagePullPolicy: Always
         name: manager
         securityContext:
           allowPrivilegeEscalation: false

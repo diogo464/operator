@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"os"
 
@@ -25,16 +26,19 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
-	// "git.d464.sh/infra/operator/internal/controller"
 	infracontroller "git.d464.sh/infra/operator/internal/controller/infra"
+	networkingcontroller "git.d464.sh/infra/operator/internal/controller/networking"
+	corev1 "k8s.io/api/core/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -42,6 +46,12 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+type OperatorConfig struct {
+	MinioEndpoint  string
+	MinioAccessKey string
+	MinioSecretKey string
+}
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
@@ -90,18 +100,31 @@ func main() {
 		os.Exit(1)
 	}
 
-	//if err = (&controller.IngressReconciler{
-	//	Client: mgr.GetClient(),
-	//	Scheme: mgr.GetScheme(),
-	//}).SetupWithManager(mgr); err != nil {
-	//	setupLog.Error(err, "unable to create controller", "controller", "Ingress")
-	//	os.Exit(1)
-	//}
-	if err = (&infracontroller.MinioServiceAccountReconciler{
+	config, err := readConfig(mgr.GetClient())
+	if err != nil {
+		setupLog.Error(err, "unable to read config")
+		os.Exit(1)
+	}
+
+	if err = (&networkingcontroller.IngressReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
+		os.Exit(1)
+	}
+
+	minioReconciler, err := infracontroller.NewMinioServiceAccountReconciler(mgr.GetClient(), mgr.GetScheme(), &infracontroller.MinioServiceAccountReconcilerConfig{
+		MinioEndpoint:  config.MinioEndpoint,
+		MinioAccessKey: config.MinioAccessKey,
+		MinioSecretKey: config.MinioSecretKey,
+	})
+	if err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "MinioServiceAccount")
+		os.Exit(1)
+	}
+	if err := minioReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to setup controller", "controller", "MinioServiceAccount")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
@@ -120,4 +143,18 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func readConfig(client client.Client) (*OperatorConfig, error) {
+	config := &OperatorConfig{}
+	secret := &corev1.Secret{}
+	if err := client.Get(context.Background(), types.NamespacedName{Name: "operator-config"}, secret); err != nil {
+		return nil, err
+	}
+
+	config.MinioEndpoint = secret.StringData["minio_endpoint"]
+	config.MinioAccessKey = secret.StringData["minio_access_key"]
+	config.MinioSecretKey = secret.StringData["minio_secret_key"]
+
+	return config, nil
 }
