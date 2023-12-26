@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"flag"
 	"os"
 
@@ -26,11 +25,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -38,7 +35,6 @@ import (
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
 	infracontroller "git.d464.sh/infra/operator/internal/controller/infra"
 	networkingcontroller "git.d464.sh/infra/operator/internal/controller/networking"
-	corev1 "k8s.io/api/core/v1"
 	//+kubebuilder:scaffold:imports
 )
 
