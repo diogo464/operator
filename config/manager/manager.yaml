@@ -88,9 +88,9 @@ spec:
         imagePullPolicy: Always
         name: manager
         envFrom:
-          - secretRef:
-            name: operator-config
-            optional: false
+        - secretRef:
+          name: operator-config
+          optional: false
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
