@@ -14,6 +14,7 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
+    name: operator-config
     app.kubernetes.io/name: secret
     app.kubernetes.io/component: manager
     app.kubernetes.io/created-by: operator
