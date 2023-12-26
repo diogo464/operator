@@ -100,7 +100,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	config, err := readConfig(mgr.GetClient())
+	config, err := readConfig()
 	if err != nil {
 		setupLog.Error(err, "unable to read config")
 		os.Exit(1)
@@ -145,16 +145,12 @@ func main() {
 	}
 }
 
-func readConfig(client client.Client) (*OperatorConfig, error) {
+func readConfig() (*OperatorConfig, error) {
 	config := &OperatorConfig{}
-	secret := &corev1.Secret{}
-	if err := client.Get(context.Background(), types.NamespacedName{Name: "operator-config"}, secret); err != nil {
-		return nil, err
-	}
 
-	config.MinioEndpoint = secret.StringData["minio_endpoint"]
-	config.MinioAccessKey = secret.StringData["minio_access_key"]
-	config.MinioSecretKey = secret.StringData["minio_secret_key"]
+	config.MinioEndpoint = os.Getenv("MINIO_ENDPOINT")
+	config.MinioAccessKey = os.Getenv("MINIO_ACCESS_KEY")
+	config.MinioSecretKey = os.Getenv("MINIO_SECRET_KEY")
 
 	return config, nil
 }

@@ -21,9 +21,9 @@ metadata:
     app.kubernetes.io/part-of: operator
     app.kubernetes.io/managed-by: kustomize
 stringData:
-  minio_endpoint: ""
-  minio_access_key: ""
-  minio_secret_key: ""
+  MINIO_ENDPOINT: ""
+  MINIO_ACCESS_KEY: ""
+  MINIO_SECRET_KEY: ""
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -87,6 +87,10 @@ spec:
         image: git.d464.sh/infra/operator:latest
         imagePullPolicy: Always
         name: manager
+        envFrom:
+          - secretRef:
+            name: operator-config
+            optional: false
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
