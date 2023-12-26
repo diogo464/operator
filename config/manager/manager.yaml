@@ -20,7 +20,7 @@ metadata:
     app.kubernetes.io/created-by: operator
     app.kubernetes.io/part-of: operator
     app.kubernetes.io/managed-by: kustomize
-data:
+stringData:
   minio_endpoint: ""
   minio_access_key: ""
   minio_secret_key: ""
