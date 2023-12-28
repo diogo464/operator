@@ -1,7 +1,7 @@
 # operator
 // TODO(user): Add simple overview of use/purpose
 
-## ingress
+## Ingress
 
 Some annotations are provided for ingresses:
 ```yaml
@@ -40,6 +40,44 @@ data:
   S3_SECRET_KEY: <secret key>
 ```
 
+## Postgres
+
+This resource represents a postgres instance.
+It will create a deployment, service and secret.
+
+```yaml
+version: infra.d464.sh/v1
+kind: Postgres
+metadata:
+  name: mads
+spec:
+  tag: "14"
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "2"
+  storage:
+    size: 1Gi
+    storageClass: blackmesa-local
+```
+
+The secret will look like:
+```yaml
+version: v1
+kind: Secret
+metadata:
+  name: mads-pg
+data:
+  DATABASE_HOST: "mads-pg"
+  DATABASE_PORT: "5432"
+  DATABASE_USER: "user"
+  DATABASE_PASS: "pass"
+  DATABASE_NAME: "dbname"
+  DATABASE_URL: "postgres://user:pass@mads-pg:5432/dbname"
+```
 
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
