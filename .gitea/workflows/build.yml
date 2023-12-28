@@ -12,11 +12,5 @@ jobs:
         registry: ${{ env.GITHUB_SERVER_URL }}
         username: ${{ env.GITHUB_ACTOR }}
         password: ${{ secrets.AUTH_TOKEN }}
-    - name: Login to container registry
-      uses: docker/login-action@v3
-      with:
-        registry: ${{ env.GITHUB_SERVER_URL }}
-        username: ${{ env.GITHUB_ACTOR }}
-        password: ${{ secrets.AUTH_TOKEN }}
     - name: Build
       run: make docker-build docker-push
