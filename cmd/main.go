@@ -96,7 +96,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	config, err := readConfig()
+	//config, err := readConfig()
 	if err != nil {
 		setupLog.Error(err, "unable to read config")
 		os.Exit(1)
@@ -110,17 +110,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	minioReconciler, err := infracontroller.NewMinioServiceAccountReconciler(mgr.GetClient(), mgr.GetScheme(), &infracontroller.MinioServiceAccountReconcilerConfig{
-		MinioEndpoint:  config.MinioEndpoint,
-		MinioAccessKey: config.MinioAccessKey,
-		MinioSecretKey: config.MinioSecretKey,
-	})
-	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "MinioServiceAccount")
-		os.Exit(1)
-	}
-	if err := minioReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to setup controller", "controller", "MinioServiceAccount")
+	/*
+		minioReconciler, err := infracontroller.NewMinioServiceAccountReconciler(mgr.GetClient(), mgr.GetScheme(), &infracontroller.MinioServiceAccountReconcilerConfig{
+			MinioEndpoint:  config.MinioEndpoint,
+			MinioAccessKey: config.MinioAccessKey,
+			MinioSecretKey: config.MinioSecretKey,
+		})
+		if err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "MinioServiceAccount")
+			os.Exit(1)
+		}
+		if err := minioReconciler.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to setup controller", "controller", "MinioServiceAccount")
+			os.Exit(1)
+		}
+	*/
+	if err = (&infracontroller.PostgresReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Postgres")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

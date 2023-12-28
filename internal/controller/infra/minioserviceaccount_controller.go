@@ -19,7 +19,6 @@ package infra
 import (
 	"context"
 	"encoding/json"
-	"math/rand"
 	"slices"
 	"strings"
 
@@ -33,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
+	"git.d464.sh/infra/operator/internal/ksink"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -48,8 +48,8 @@ type minioServiceAccountSecretData struct {
 }
 
 func newRandomMinioServiceAccountSecretData(url string) *minioServiceAccountSecretData {
-	randomName := MINIO_ACCESS_KEY_PREFIX + randomString(MINIO_ACCESS_KEY_MAX_LENGTH-len(MINIO_ACCESS_KEY_PREFIX))
-	randomKey := randomString(40)
+	randomName := MINIO_ACCESS_KEY_PREFIX + ksink.RandomString(MINIO_ACCESS_KEY_MAX_LENGTH-len(MINIO_ACCESS_KEY_PREFIX))
+	randomKey := ksink.RandomString(40)
 	return &minioServiceAccountSecretData{
 		Url:       url,
 		AccessKey: randomName,
@@ -315,16 +315,4 @@ func minioSecretNameForAccount(acct *infrav1.MinioServiceAccount) types.Namespac
 		Namespace: acct.Namespace,
 		Name:      acct.Name + "-minio",
 	}
-}
-
-func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyz" +
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[rand.Intn(len(charset))]
-	}
-
-	return string(b)
 }

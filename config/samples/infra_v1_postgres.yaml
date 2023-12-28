@@ -1,0 +1,19 @@
+apiVersion: infra.d464.sh/v1
+kind: Postgres
+metadata:
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: postgres-sample
+    app.kubernetes.io/part-of: operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator
+  name: postgres-sample
+spec:
+  tag: "14"
+  resources: 
+    limits:
+      memory: "128Mi"
+      cpu: "1"
+  storage:
+    size: 1Gi
+    storageClassName: blackmesa
