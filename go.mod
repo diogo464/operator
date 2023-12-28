@@ -6,9 +6,9 @@ require (
 	github.com/minio/madmin-go v1.7.5
 	github.com/onsi/ginkgo/v2 v2.13.2
 	github.com/onsi/gomega v1.30.0
-	k8s.io/api v0.28.3
+	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
-	k8s.io/client-go v0.28.3
+	k8s.io/client-go v0.29.0
 	sigs.k8s.io/controller-runtime v0.16.3
 )
 
@@ -64,7 +64,7 @@ require (
 	golang.org/x/crypto v0.14.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/oauth2 v0.8.0 // indirect
+	golang.org/x/oauth2 v0.10.0 // indirect
 	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
