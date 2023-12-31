@@ -60,7 +60,7 @@ spec:
       cpu: "2"
   storage:
     size: 1Gi
-    storageClass: blackmesa-local
+    storageClassName: blackmesa-local
 ```
 
 The secret will look like:
