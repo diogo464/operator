@@ -32,6 +32,9 @@ type PostgresSpec struct {
 
 	Tag   string `json:"tag,omitempty"`
 	Image string `json:"image,omitempty"`
+	// +kubebuilder:validation:Maximum=1
+	// +kubebuilder:validation:Minimum=0
+	Replicas *int32 `json:"replicas,omitempty"`
 	// +kubebuilder:validation:required
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// +kubebuilder:validation:required

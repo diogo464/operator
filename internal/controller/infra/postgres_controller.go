@@ -191,6 +191,11 @@ func (r *PostgresReconciler) getOrCreateDeployment(ctx context.Context, pg *infr
 		return nil, err
 	}
 
+	var replicas int32 = 1
+	if pg.Spec.Replicas != nil {
+		replicas = *pg.Spec.Replicas
+	}
+
 	deployment := &appv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pg.Name + POSTGRES_NAME_SUFFIX,
@@ -198,7 +203,7 @@ func (r *PostgresReconciler) getOrCreateDeployment(ctx context.Context, pg *infr
 		},
 	}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, deployment, func() error {
-		deployment.Spec.Replicas = ksink.I32Ptr(1)
+		deployment.Spec.Replicas = ksink.I32Ptr(replicas)
 		deployment.Spec.Strategy.Type = appv1.RecreateDeploymentStrategyType
 		deployment.Spec.Selector = &metav1.LabelSelector{
 			MatchLabels: map[string]string{
