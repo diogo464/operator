@@ -51,6 +51,7 @@ metadata:
   name: mads
 spec:
   tag: "14"
+  replicas: 1             # this value is optional and can be 1 or 0
   resources:
     requests:
       memory: "128Mi"
