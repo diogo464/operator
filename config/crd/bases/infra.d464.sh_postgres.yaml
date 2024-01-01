@@ -36,6 +36,11 @@ spec:
             properties:
               image:
                 type: string
+              replicas:
+                format: int32
+                maximum: 1
+                minimum: 0
+                type: integer
               resources:
                 description: ResourceRequirements describes the compute resource requirements.
                 properties:
