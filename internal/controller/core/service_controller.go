@@ -139,12 +139,22 @@ func (r *ServiceReconciler) reconcileDomainName(ctx context.Context, service *co
 func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *corev1.Service) error {
 	l := log.FromContext(ctx)
 
-	portforwads := &infrav1.PortForwardList{}
-	filter := client.MatchingFields{"metadata.annotations." + ANNOTATION_SERVICE_OWNER: service.Name}
-	if err := r.List(ctx, portforwads, client.InNamespace(service.Namespace), filter); err != nil {
+	// TODO: find better way to filter
+	allPortForwards := &infrav1.PortForwardList{}
+	if err := r.List(ctx, allPortForwards, client.InNamespace(service.Namespace)); err != nil {
 		l.Error(err, "Failed to list portforwards")
 		return err
 	}
+	portForwards := []*infrav1.PortForward{}
+	for _, portforward := range allPortForwards.Items {
+		if portforward.ObjectMeta.Annotations == nil {
+			continue
+		}
+		if owner, ok := portforward.ObjectMeta.Annotations[ANNOTATION_SERVICE_OWNER]; ok && owner == service.Name {
+			portForwards = append(portForwards, &portforward)
+		}
+	}
+
 	deleteQueue := []*infrav1.PortForward{}
 
 	if r.isExposed(service) {
@@ -176,13 +186,13 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 			}
 			pfuids[portforward.UID] = struct{}{}
 		}
-		for _, portforward := range portforwads.Items {
+		for _, portforward := range portForwards {
 			if _, ok := pfuids[portforward.UID]; !ok {
-				deleteQueue = append(deleteQueue, &portforward)
+				deleteQueue = append(deleteQueue, portforward)
 			}
 		}
 	} else {
-		for _, portforward := range portforwads.Items {
+		for _, portforward := range allPortForwards.Items {
 			deleteQueue = append(deleteQueue, &portforward)
 		}
 	}
