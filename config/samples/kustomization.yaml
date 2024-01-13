@@ -2,4 +2,6 @@
 resources:
 - infra_v1_minioserviceaccount.yaml
 - infra_v1_postgres.yaml
+- infra_v1_portforward.yaml
+- infra_v1_domainname.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -1,0 +1,12 @@
+apiVersion: infra.d464.sh/v1
+kind: PortForward
+metadata:
+  labels:
+    app.kubernetes.io/name: portforward
+    app.kubernetes.io/instance: portforward-sample
+    app.kubernetes.io/part-of: operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator
+  name: portforward-sample
+spec:
+  # TODO(user): Add fields here

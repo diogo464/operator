@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -38,12 +39,19 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
+const (
+	MODULE_INGRESS     = "ingress"
+	MODULE_MINIO       = "minio"
+	MODULE_POSTGRES    = "postgres"
+	MODULE_PORTFORWARD = "portforward"
+)
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
 
-type OperatorConfig struct {
+type MinioConfig struct {
 	MinioEndpoint  string
 	MinioAccessKey string
 	MinioSecretKey string
@@ -96,38 +104,66 @@ func main() {
 		os.Exit(1)
 	}
 
-	config, err := readConfig()
-	if err != nil {
-		setupLog.Error(err, "unable to read config")
-		os.Exit(1)
+	if isModuleEnabled(MODULE_INGRESS) {
+		setupLog.Info("Ingress module enabled")
+		if err = (&networkingcontroller.IngressReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Ingress")
+			os.Exit(1)
+		}
 	}
 
-	if err = (&networkingcontroller.IngressReconciler{
+	if isModuleEnabled(MODULE_MINIO) {
+		setupLog.Info("Minio module enabled")
+
+		config, err := readMinioConfig()
+		if err != nil {
+			setupLog.Error(err, "unable to read minio config")
+			os.Exit(1)
+		}
+
+		minioReconciler, err := infracontroller.NewMinioServiceAccountReconciler(mgr.GetClient(), mgr.GetScheme(), &infracontroller.MinioServiceAccountReconcilerConfig{
+			MinioEndpoint:  config.MinioEndpoint,
+			MinioAccessKey: config.MinioAccessKey,
+			MinioSecretKey: config.MinioSecretKey,
+		})
+		if err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "MinioServiceAccount")
+			os.Exit(1)
+		}
+		if err := minioReconciler.SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to setup controller", "controller", "MinioServiceAccount")
+			os.Exit(1)
+		}
+	}
+
+	if isModuleEnabled(MODULE_POSTGRES) {
+		setupLog.Info("Postgres module enabled")
+		if err = (&infracontroller.PostgresReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Postgres")
+			os.Exit(1)
+		}
+	}
+
+	if isModuleEnabled(MODULE_PORTFORWARD) {
+		if err = (&infracontroller.PortForwardReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "PortForward")
+			os.Exit(1)
+		}
+	}
+	if err = (&infracontroller.DomainNameReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
-		os.Exit(1)
-	}
-
-	minioReconciler, err := infracontroller.NewMinioServiceAccountReconciler(mgr.GetClient(), mgr.GetScheme(), &infracontroller.MinioServiceAccountReconcilerConfig{
-		MinioEndpoint:  config.MinioEndpoint,
-		MinioAccessKey: config.MinioAccessKey,
-		MinioSecretKey: config.MinioSecretKey,
-	})
-	if err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "MinioServiceAccount")
-		os.Exit(1)
-	}
-	if err := minioReconciler.SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to setup controller", "controller", "MinioServiceAccount")
-		os.Exit(1)
-	}
-	if err = (&infracontroller.PostgresReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Postgres")
+		setupLog.Error(err, "unable to create controller", "controller", "DomainName")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
@@ -148,12 +184,30 @@ func main() {
 	}
 }
 
-func readConfig() (*OperatorConfig, error) {
-	config := &OperatorConfig{}
+func readMinioConfig() (*MinioConfig, error) {
+	config := &MinioConfig{}
 
 	config.MinioEndpoint = os.Getenv("MINIO_ENDPOINT")
 	config.MinioAccessKey = os.Getenv("MINIO_ACCESS_KEY")
 	config.MinioSecretKey = os.Getenv("MINIO_SECRET_KEY")
 
 	return config, nil
+}
+
+func isModuleEnabled(module string) bool {
+	modulesVar, exists := os.LookupEnv("MODULES")
+	if !exists {
+		return true
+	}
+	modules := strings.Split(modulesVar, ",")
+	for _, m := range modules {
+		if m == module {
+			return true
+		}
+	}
+	return false
+}
+
+func isLeaderElectioEnabled() bool {
+	return os.Getenv("LEADER_ELECTION") == "true"
 }

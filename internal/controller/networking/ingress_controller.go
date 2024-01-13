@@ -20,6 +20,7 @@ import (
 	"context"
 	"strings"
 
+	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
 	netv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,13 +33,17 @@ import (
 const (
 	// the ingress class to use for the public ingress
 	INGRESS_CLASS_PUBLIC = "nginx-external"
+	INGRESS_DNS_TARGET   = "ipv4.d464.sh"
 
-	ANNOTATION_INGRESS_FORCE_SSL = "infra.d464.sh/ingress-force-ssl"
-	ANNOTATION_INGRESS_PUBLIC    = "infra.d464.sh/ingress-public"
+	ANNOTATION_INGRESS_FORCE_SSL = "ingress.infra.d464.sh/force-ssl"
+	ANNOTATION_INGRESS_PUBLIC    = "ingress.infra.d464.sh/public"
+	ANNOTATION_INGRESS_PROXIED   = "ingress.infra.d464.sh/proxied"
 
 	ANNOTATION_INGRESS_NGINX_FORCE_SSL = "nginx.ingress.kubernetes.io/force-ssl-redirect"
 	// annotation to place on the private ingress to exclude it from external-dns
 	ANNOTATION_INGRESS_EXTERNAL_DNS_EXCLUDE = "external-dns.alpha.kubernetes.io/exclude"
+	ANNOTATION_INGRESS_EXTERNAL_DNS_TARGET  = "external-dns.alpha.kubernetes.io/target"
+	ANNOTATION_INGRESS_EXTERNAL_DNS_PROXIED = "external-dns.alpha.kubernetes.io/cloudflare-proxied"
 )
 
 var (
@@ -58,6 +63,9 @@ type IngressReconciler struct {
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=update
+//+kubebuilder:rbac:groups=infra.d464.sh,resources=domainnames,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=infra.d464.sh,resources=domainnames/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=infra.d464.sh,resources=domainnames/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -103,6 +111,11 @@ func (r *IngressReconciler) ReconcileIngress(ctx context.Context, ing *netv1.Ing
 		return ctrl.Result{}, err
 	}
 
+	if err := r.createOrUpdateDomains(ctx, ing); err != nil {
+		l.Error(err, "Failed to create or update domain")
+		return ctrl.Result{}, err
+	}
+
 	if ing.ObjectMeta.Annotations[ANNOTATION_INGRESS_PUBLIC] == "true" {
 		l.Info("Ingress is public", "name", ing.Name, "namespace", ing.Namespace)
 		publicIngress := &netv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: ing.ObjectMeta.Name + "-public", Namespace: ing.ObjectMeta.Namespace}}
@@ -135,6 +148,32 @@ func (r *IngressReconciler) ReconcileIngress(ctx context.Context, ing *netv1.Ing
 	return ctrl.Result{}, nil
 }
 
+func (r *IngressReconciler) createOrUpdateDomains(ctx context.Context, ingress *netv1.Ingress) error {
+	l := log.FromContext(ctx)
+
+	domain := infrav1.DomainName{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ingress.Name,
+			Namespace: ingress.Namespace,
+		},
+	}
+
+	if ingress.Spec.Rules == nil || len(ingress.Spec.Rules) == 0 || ingress.Status.LoadBalancer.Ingress == nil || len(ingress.Status.LoadBalancer.Ingress) == 0 {
+		return client.IgnoreNotFound(r.Delete(ctx, &domain))
+	}
+
+	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &domain, func() error {
+		domain.Spec.Domain = ingress.Spec.Rules[0].Host
+		domain.Spec.Address = ingress.Status.LoadBalancer.Ingress[0].IP
+		if err := controllerutil.SetControllerReference(ingress, &domain, r.Scheme); err != nil {
+			l.Error(err, "Failed to set controller reference")
+			return err
+		}
+		return nil
+	})
+	return err
+}
+
 func (r *IngressReconciler) expandAnnotations(annotations map[string]string, isPublic bool) map[string]string {
 	expanded := make(map[string]string)
 	for key, value := range annotations {
@@ -160,6 +199,15 @@ func (r *IngressReconciler) expandAnnotations(annotations map[string]string, isP
 			expanded[ANNOTATION_INGRESS_NGINX_FORCE_SSL] = "true"
 		} else {
 			expanded[ANNOTATION_INGRESS_NGINX_FORCE_SSL] = "false"
+		}
+	}
+
+	if v, ok := expanded[ANNOTATION_INGRESS_PROXIED]; ok {
+		expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_TARGET] = INGRESS_DNS_TARGET
+		if v == "true" {
+			expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_PROXIED] = "true"
+		} else {
+			expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_PROXIED] = "false"
 		}
 	}
 

@@ -5,7 +5,8 @@ metadata:
   name: example-ingress
   namespace: default
   annotations:
-    infra.d464.sh/ingress-public: "true"
+    ingress.infra.d464.sh/public: "true"
+    ingress.infra.d464.sh/proxied: "true"
 spec:
   rules:
   - host: example.foo.com

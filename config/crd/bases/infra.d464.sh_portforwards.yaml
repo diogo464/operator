@@ -1,0 +1,58 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: portforwards.infra.d464.sh
+spec:
+  group: infra.d464.sh
+  names:
+    kind: PortForward
+    listKind: PortForwardList
+    plural: portforwards
+    singular: portforward
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: PortForward is the Schema for the portforwards API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PortForwardSpec defines the desired state of PortForward
+            properties:
+              address:
+                description: Address is the ipv4 address of the host to forward to
+                type: string
+              externalPort:
+                description: ExternalPort is the port used to access from the outside.
+                  It defaults to the same value as Port.
+                type: integer
+              port:
+                description: Port is the port to forward to on the Address
+                type: integer
+            required:
+            - address
+            - port
+            type: object
+          status:
+            description: PortForwardStatus defines the observed state of PortForward
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

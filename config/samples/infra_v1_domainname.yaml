@@ -1,0 +1,12 @@
+apiVersion: infra.d464.sh/v1
+kind: DomainName
+metadata:
+  labels:
+    app.kubernetes.io/name: domainname
+    app.kubernetes.io/instance: domainname-sample
+    app.kubernetes.io/part-of: operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: operator
+  name: domainname-sample
+spec:
+  # TODO(user): Add fields here

@@ -87,6 +87,32 @@ rules:
 - apiGroups:
   - infra.d464.sh
   resources:
+  - domainnames
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - domainnames/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - domainnames/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infra.d464.sh
+  resources:
   - minioserviceaccounts
   verbs:
   - create
@@ -106,6 +132,32 @@ rules:
   - infra.d464.sh
   resources:
   - minioserviceaccounts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - portforwards
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - portforwards/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - infra.d464.sh
+  resources:
+  - portforwards/status
   verbs:
   - get
   - patch

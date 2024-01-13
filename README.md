@@ -1,19 +1,38 @@
 # operator
 
-## Ingress
+## Annotations
 
-Some annotations are provided for ingresses:
 ```yaml
-metadata:
-  annotations:
-    # enable/disable a public ingress.
-    # enabling this will create a second ingress that exposes the service to the public.
-    infra.d464.sh/ingress-public: "true"
-    # enabling this will force the connections to use ssl
-    infra.d464.sh/ingress-force-ssl: "true"
+## ingress annotations
+# exposes this ingress to the public internet.
+# the domain will be registered with external-dns and exposed using the external ingress class.
+# defaults to "false".
+ingress.infra.d464.sh/public: "true"
+# forces ssl connections on this ingress.
+# defaults to "false".
+ingress.infra.d464.sh/force-ssl: "true"
+# if the ingress is public then proxy it using cloudflare.
+# otherwise a cname is created that points the domain to our public ip.
+# defaults to "false".
+ingress.infra.d464.sh/proxied: "true"
+
+## service annotations
+# domain name that will point to this service's ip address.
+# this domain is only available in the local network.
+# if left empty, no domain is created.
+# this is only valid on load balancer services.
+# defaults to "".
+service.infra.d464.sh/domain: "mydomain.d64.sh"
+# expose this port to the public.
+# this will create a port foward on the router to this service's ports.
+# this is only valid on load balancer services.
+# defaults to "false".
+service.infra.d464.sh/expose: "true"
 ```
 
-## MinioServiceAccount
+## CRDs
+
+### MinioServiceAccount
 
 This resource represents a service account in minio.
 It will create a secret with the credentials used to access minio.
@@ -39,7 +58,7 @@ data:
   S3_SECRET_KEY: <secret key>
 ```
 
-## Postgres
+### Postgres
 
 This resource represents a postgres instance.
 It will create a deployment, service and secret.
@@ -78,6 +97,53 @@ data:
   DATABASE_NAME: "dbname"
   DATABASE_URL: "postgres://user:pass@mads-pg:5432/dbname"
 ```
+
+### PortForward
+
+This resource represents a port foward on the router.
+
+```yaml
+apiVersion: infra.d464.sh/v1
+kind: PortForward
+metadata:
+  name: my-port-forward
+spec:
+  address: 10.0.3.5
+  port: 80
+  externalPort: 80
+  protocol: "tcp"             # "tcp" or "udp"
+```
+
+### DomainName
+
+This resource represents a domain name on the local network.
+
+```yaml
+apiVersion: infra.d464.sh/v1
+kind: DomainName
+metadata:
+  name: my-domain-name
+spec:
+  domain: git.d464.sh
+  address: 10.0.3.5
+```
+
+## Ingress
+
+Some annotations are provided for ingresses:
+```yaml
+metadata:
+  annotations:
+    # enable/disable a public ingress.
+    # enabling this will create a second ingress that exposes the service to the public.
+    infra.d464.sh/ingress-public: "true"
+    # enabling this will force the connections to use ssl
+    infra.d464.sh/ingress-force-ssl: "true"
+```
+
+## Limitations
+
++ Only the first domain used in an ingress is exposed on the local network
 
 ## Developing
 
