@@ -271,7 +271,7 @@ func (in *PortForwardSpec) DeepCopyInto(out *PortForwardSpec) {
 	*out = *in
 	if in.ExternalPort != nil {
 		in, out := &in.ExternalPort, &out.ExternalPort
-		*out = new(int)
+		*out = new(int32)
 		**out = **in
 	}
 }

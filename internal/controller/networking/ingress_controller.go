@@ -96,6 +96,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&netv1.Ingress{}).
+		Owns(&infrav1.DomainName{}).
 		Complete(r)
 }
 
@@ -165,7 +166,7 @@ func (r *IngressReconciler) createOrUpdateDomains(ctx context.Context, ingress *
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &domain, func() error {
 		domain.Spec.Domain = ingress.Spec.Rules[0].Host
 		domain.Spec.Address = ingress.Status.LoadBalancer.Ingress[0].IP
-		if err := controllerutil.SetControllerReference(ingress, &domain, r.Scheme); err != nil {
+		if err := controllerutil.SetOwnerReference(ingress, &domain, r.Scheme); err != nil {
 			l.Error(err, "Failed to set controller reference")
 			return err
 		}

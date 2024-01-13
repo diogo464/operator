@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,10 +33,15 @@ type PortForwardSpec struct {
 	//+kube:validation:Minimum=1
 	//+kube:validation:Maximum=65535
 	// Port is the port to forward to on the Address
-	Port int `json:"port"`
+	Port int32 `json:"port"`
 	// ExternalPort is the port used to access from the outside.
 	// It defaults to the same value as Port.
-	ExternalPort *int `json:"externalPort,omitempty"`
+	ExternalPort *int32 `json:"externalPort,omitempty"`
+	// The IP protocol for this port. Supports "TCP", "UDP", and "SCTP".
+	// Default is TCP.
+	// +default="TCP"
+	// +optional
+	Protocol corev1.Protocol `json:"protocol,omitempty"`
 }
 
 // PortForwardStatus defines the observed state of PortForward

@@ -143,7 +143,8 @@ metadata:
 
 ## Limitations
 
-+ Only the first domain used in an ingress is exposed on the local network
++ Only the first domain used in an ingress is exposed on the local network.
++ Only the first ip address of a load balancer service is considered.
 
 ## Developing
 

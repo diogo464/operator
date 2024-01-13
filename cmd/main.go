@@ -34,6 +34,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
+	corecontroller "git.d464.sh/infra/operator/internal/controller/core"
 	infracontroller "git.d464.sh/infra/operator/internal/controller/infra"
 	networkingcontroller "git.d464.sh/infra/operator/internal/controller/networking"
 	//+kubebuilder:scaffold:imports
@@ -164,6 +165,13 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DomainName")
+		os.Exit(1)
+	}
+	if err = (&corecontroller.ServiceReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Service")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

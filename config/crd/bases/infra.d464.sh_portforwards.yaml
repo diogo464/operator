@@ -40,10 +40,17 @@ spec:
               externalPort:
                 description: ExternalPort is the port used to access from the outside.
                   It defaults to the same value as Port.
+                format: int32
                 type: integer
               port:
                 description: Port is the port to forward to on the Address
+                format: int32
                 type: integer
+              protocol:
+                default: TCP
+                description: The IP protocol for this port. Supports "TCP", "UDP",
+                  and "SCTP". Default is TCP.
+                type: string
             required:
             - address
             - port
