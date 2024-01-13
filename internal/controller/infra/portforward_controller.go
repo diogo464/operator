@@ -19,18 +19,21 @@ package infra
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
+	infraweb "git.d464.sh/infra/operator/internal/web"
 )
 
 // PortForwardReconciler reconciles a PortForward object
 type PortForwardReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Forwards *infraweb.Forwards
 }
 
 //+kubebuilder:rbac:groups=infra.d464.sh,resources=portforwards,verbs=get;list;watch;create;update;patch;delete
@@ -47,9 +50,27 @@ type PortForwardReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
 func (r *PortForwardReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	l := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	key := req.Namespace + "/" + req.Name
+	forward := &infrav1.PortForward{}
+	err := r.Get(ctx, req.NamespacedName, forward)
+	if err != nil && !errors.IsNotFound(err) {
+		l.Error(err, "unable to fetch PortForward")
+		return ctrl.Result{}, err
+	} else if errors.IsNotFound(err) {
+		r.Forwards.Delete(key)
+		return ctrl.Result{}, nil
+	}
+
+	var srcPort int32
+	if forward.Spec.ExternalPort == nil {
+		srcPort = forward.Spec.Port
+	} else {
+		srcPort = *forward.Spec.ExternalPort
+	}
+
+	r.Forwards.Set(key, string(forward.Spec.Protocol), srcPort, forward.Spec.Address, forward.Spec.Port)
 
 	return ctrl.Result{}, nil
 }

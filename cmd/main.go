@@ -37,6 +37,7 @@ import (
 	corecontroller "git.d464.sh/infra/operator/internal/controller/core"
 	infracontroller "git.d464.sh/infra/operator/internal/controller/infra"
 	networkingcontroller "git.d464.sh/infra/operator/internal/controller/networking"
+	infraweb "git.d464.sh/infra/operator/internal/web"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -83,6 +84,9 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	hosts := infraweb.NewHosts()
+	forwards := infraweb.NewForwards()
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -155,8 +159,9 @@ func main() {
 
 	if isModuleEnabled(MODULE_PORTFORWARD) {
 		if err = (&infracontroller.PortForwardReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Forwards: forwards,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "PortForward")
 			os.Exit(1)
@@ -167,6 +172,7 @@ func main() {
 		if err = (&infracontroller.DomainNameReconciler{
 			Client: mgr.GetClient(),
 			Scheme: mgr.GetScheme(),
+			Hosts:  hosts,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "DomainName")
 			os.Exit(1)
@@ -192,6 +198,13 @@ func main() {
 		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
+
+	go func() {
+		if err := infraweb.Start(forwards, hosts); err != nil {
+			setupLog.Error(err, "unable to start web server")
+			os.Exit(1)
+		}
+	}()
 
 	setupLog.Info("starting manager")
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {

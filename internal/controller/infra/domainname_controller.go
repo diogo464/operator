@@ -19,18 +19,21 @@ package infra
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
+	infraweb "git.d464.sh/infra/operator/internal/web"
 )
 
 // DomainNameReconciler reconciles a DomainName object
 type DomainNameReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Hosts  *infraweb.Hosts
 }
 
 //+kubebuilder:rbac:groups=infra.d464.sh,resources=domainnames,verbs=get;list;watch;create;update;patch;delete
@@ -47,9 +50,21 @@ type DomainNameReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.16.3/pkg/reconcile
 func (r *DomainNameReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	l := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	key := req.Namespace + "/" + req.Name
+	domainName := &infrav1.DomainName{}
+	err := r.Get(ctx, req.NamespacedName, domainName)
+	if err != nil && !errors.IsNotFound(err) {
+		l.Error(err, "unable to fetch DomainName")
+		return ctrl.Result{}, err
+	} else if errors.IsNotFound(err) {
+		l.Info("DomainName not found", "key", key)
+		r.Hosts.Delete(key)
+		return ctrl.Result{}, nil
+	}
+
+	r.Hosts.Set(key, domainName.Spec.Address, domainName.Spec.Domain)
 
 	return ctrl.Result{}, nil
 }
