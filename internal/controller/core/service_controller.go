@@ -83,7 +83,7 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.reconcileDomainNames(ctx, service); err != nil {
+	if err := r.reconcileDomainName(ctx, service); err != nil {
 		l.Error(err, "Failed to reconcile domain names")
 		return ctrl.Result{}, err
 	}
@@ -105,13 +105,13 @@ func (r *ServiceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ServiceReconciler) reconcileDomainNames(ctx context.Context, service *corev1.Service) error {
+func (r *ServiceReconciler) reconcileDomainName(ctx context.Context, service *corev1.Service) error {
 	l := log.FromContext(ctx)
 
 	domain := r.getDomainName(service)
 	domainName := &infrav1.DomainName{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      domain,
+			Name:      service.Name,
 			Namespace: service.Namespace,
 		},
 	}
