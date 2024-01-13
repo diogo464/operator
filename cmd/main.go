@@ -45,6 +45,8 @@ const (
 	MODULE_MINIO       = "minio"
 	MODULE_POSTGRES    = "postgres"
 	MODULE_PORTFORWARD = "portforward"
+	MODULE_DOMAINNAME  = "domainname"
+	MODULE_SERVICE     = "service"
 )
 
 var (
@@ -160,19 +162,25 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	if err = (&infracontroller.DomainNameReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DomainName")
-		os.Exit(1)
+
+	if isModuleEnabled(MODULE_DOMAINNAME) {
+		if err = (&infracontroller.DomainNameReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "DomainName")
+			os.Exit(1)
+		}
 	}
-	if err = (&corecontroller.ServiceReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Service")
-		os.Exit(1)
+
+	if isModuleEnabled(MODULE_SERVICE) {
+		if err = (&corecontroller.ServiceReconciler{
+			Client: mgr.GetClient(),
+			Scheme: mgr.GetScheme(),
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "Service")
+			os.Exit(1)
+		}
 	}
 	//+kubebuilder:scaffold:builder
 

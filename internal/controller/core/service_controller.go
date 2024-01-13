@@ -18,6 +18,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	infrav1 "git.d464.sh/infra/operator/api/infra/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -162,16 +164,19 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 	deleteQueue := []*infrav1.PortForward{}
 
 	if r.isExposed(service) {
-		l.Info("Service " + service.Name + " is exposed")
+		l.Info("Service " + service.Name + " is exposed and has " + fmt.Sprintf("%d", len(service.Spec.Ports)) + " ports")
 		pfuids := map[types.UID]struct{}{}
 		for _, port := range service.Spec.Ports {
+			portforwardName := fmt.Sprintf("%s-%s-%d", service.Name, strings.ToLower(string(port.Protocol)), port.Port)
 			portforward := &infrav1.PortForward{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      service.Name,
+					Name:      portforwardName,
 					Namespace: service.Namespace,
 				},
 			}
-			_, err := controllerutil.CreateOrUpdate(ctx, r.Client, portforward, func() error {
+
+			l.Info("Reconciling portforward " + portforwardName)
+			op, err := controllerutil.CreateOrUpdate(ctx, r.Client, portforward, func() error {
 				if portforward.ObjectMeta.Annotations == nil {
 					portforward.ObjectMeta.Annotations = map[string]string{}
 				}
@@ -185,6 +190,7 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 				}
 				return nil
 			})
+			l.Info("Portforward " + portforwardName + " " + string(op))
 			if err != nil {
 				l.Error(err, "Failed to create or update portforward")
 				return err
@@ -204,6 +210,7 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 	}
 
 	for _, portforward := range deleteQueue {
+		l.Info("Deleting portforward " + portforward.Name)
 		if err := r.Delete(ctx, portforward); err != nil {
 			l.Error(err, "Failed to delete portforward")
 			return err
