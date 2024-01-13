@@ -128,20 +128,16 @@ spec:
   address: 10.0.3.5
 ```
 
-## Ingress
+## webapi
 
-Some annotations are provided for ingresses:
-```yaml
-metadata:
-  annotations:
-    # enable/disable a public ingress.
-    # enabling this will create a second ingress that exposes the service to the public.
-    infra.d464.sh/ingress-public: "true"
-    # enabling this will force the connections to use ssl
-    infra.d464.sh/ingress-force-ssl: "true"
+The operator exposes a simple http web api on port 3000.
 ```
+GET /hosts        -> hosts file containing the DomainNames on the cluster.
+GET /forward      -> text file containing the PortForwards on the server.
+```
+These endpoinds are used by the router to update dns and open ports.
 
-## Limitations
+## limitations
 
 + Only the first domain used in an ingress is exposed on the local network.
 + Only the first ip address of a load balancer service is considered.
