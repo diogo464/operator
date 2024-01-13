@@ -76,10 +76,12 @@ func (r *ServiceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if !r.isLoadBalancer(service) {
+		l.Info("Service " + service.Name + " is not a loadbalancer")
 		return ctrl.Result{}, nil
 	}
 
 	if r.getIpAddress(service) == "" {
+		l.Info("Service " + service.Name + " does not have an ip address")
 		return ctrl.Result{}, nil
 	}
 
@@ -117,10 +119,12 @@ func (r *ServiceReconciler) reconcileDomainName(ctx context.Context, service *co
 	}
 
 	if domain == "" {
+		l.Info("Service " + service.Name + " does not have a domain name")
 		if err := r.Delete(ctx, domainName); err != nil {
 			return client.IgnoreNotFound(err)
 		}
 	} else {
+		l.Info("Service " + service.Name + " has domain name " + domain)
 		_, err := controllerutil.CreateOrUpdate(ctx, r.Client, domainName, func() error {
 			domainName.Spec.Domain = domain
 			domainName.Spec.Address = r.getIpAddress(service)
@@ -158,6 +162,7 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 	deleteQueue := []*infrav1.PortForward{}
 
 	if r.isExposed(service) {
+		l.Info("Service " + service.Name + " is exposed")
 		pfuids := map[types.UID]struct{}{}
 		for _, port := range service.Spec.Ports {
 			portforward := &infrav1.PortForward{
@@ -192,6 +197,7 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 			}
 		}
 	} else {
+		l.Info("Service " + service.Name + " is not exposed")
 		for _, portforward := range allPortForwards.Items {
 			deleteQueue = append(deleteQueue, &portforward)
 		}
