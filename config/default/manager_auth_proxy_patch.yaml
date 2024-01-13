@@ -25,6 +25,9 @@ spec:
         - containerPort: 8443
           protocol: TCP
           name: https
+        - containerPort: 3000
+          protocol: TCP
+          name: web
         resources:
           limits:
             cpu: 500m
