@@ -203,8 +203,8 @@ func (r *IngressReconciler) expandAnnotations(annotations map[string]string, isP
 		}
 	}
 
+	expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_TARGET] = INGRESS_DNS_TARGET
 	if v, ok := expanded[ANNOTATION_INGRESS_PROXIED]; ok {
-		expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_TARGET] = INGRESS_DNS_TARGET
 		if v == "true" {
 			expanded[ANNOTATION_INGRESS_EXTERNAL_DNS_PROXIED] = "true"
 		} else {
