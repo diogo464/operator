@@ -1,6 +1,7 @@
 package web
 
 import (
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -24,7 +25,7 @@ func (h *Forwards) Set(key string, protocol string, srcPort int32, ipv4 string, 
 	if protocol != "tcp" && protocol != "udp" {
 		panic("protocol must be either tcp or udp")
 	}
-	h.entries[key] = protocol + " " + ipv4 + ":" + string(srcPort) + " " + string(dstPort)
+	h.entries[key] = protocol + " " + ipv4 + ":" + strconv.Itoa(int(srcPort)) + " " + strconv.Itoa(int(dstPort))
 }
 
 func (h *Forwards) Delete(key string) {
