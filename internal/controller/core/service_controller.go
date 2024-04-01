@@ -213,7 +213,9 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 		l.Info("Deleting portforward " + portforward.Name)
 		if err := r.Delete(ctx, portforward); err != nil {
 			l.Error(err, "Failed to delete portforward")
-			return err
+			if !errors.IsNotFound(err) {
+				return err
+			}
 		}
 	}
 
