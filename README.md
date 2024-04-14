@@ -38,7 +38,7 @@ This resource represents a service account in minio.
 It will create a secret with the credentials used to access minio.
 
 ```yaml
-version: infra.d464.sh/v1
+apiVersion: infra.d464.sh/v1
 kind: MinioServiceAccount
 metadata:
   name: mads
@@ -48,7 +48,7 @@ spec:
 
 The generate secret will look like:
 ```yaml
-version: v1
+apiVersion: v1
 kind: Secret
 metadata:
   name: mads-minio
@@ -64,7 +64,7 @@ This resource represents a postgres instance.
 It will create a deployment, service and secret.
 
 ```yaml
-version: infra.d464.sh/v1
+apiVersion: infra.d464.sh/v1
 kind: Postgres
 metadata:
   name: mads
@@ -85,7 +85,7 @@ spec:
 
 The secret will look like:
 ```yaml
-version: v1
+apiVersion: v1
 kind: Secret
 metadata:
   name: mads-pg
