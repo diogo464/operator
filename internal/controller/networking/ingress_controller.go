@@ -32,8 +32,9 @@ import (
 
 const (
 	// the ingress class to use for the public ingress
-	INGRESS_CLASS_PUBLIC = "nginx-external"
-	INGRESS_DNS_TARGET   = "ipv4.d464.sh"
+	INGRESS_CLASS_PUBLIC  = "nginx-external"
+	INGRESS_CLASS_PRIVATE = "nginx"
+	INGRESS_DNS_TARGET    = "ipv4.d464.sh"
 
 	ANNOTATION_INGRESS_FORCE_SSL = "ingress.infra.d464.sh/force-ssl"
 	ANNOTATION_INGRESS_PUBLIC    = "ingress.infra.d464.sh/public"
@@ -161,6 +162,11 @@ func (r *IngressReconciler) createOrUpdateDomains(ctx context.Context, ingress *
 
 	if ingress.Spec.Rules == nil || len(ingress.Spec.Rules) == 0 || ingress.Status.LoadBalancer.Ingress == nil || len(ingress.Status.LoadBalancer.Ingress) == 0 {
 		return client.IgnoreNotFound(r.Delete(ctx, &domain))
+	}
+
+	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != INGRESS_CLASS_PRIVATE {
+		// only create domain names for private ingresses
+		return nil
 	}
 
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &domain, func() error {
