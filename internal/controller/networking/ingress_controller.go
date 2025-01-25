@@ -51,6 +51,7 @@ var (
 	// prefixes to filter out of the public ingress annotations
 	ANNOTATION_PUBLIC_FILTER_PREFIXES = []string{
 		"hajimari.io",
+		"gethomepage.dev",
 		ANNOTATION_INGRESS_PUBLIC, // delete this to prevent infinite recursion
 	}
 )
