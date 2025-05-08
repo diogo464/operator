@@ -22,7 +22,7 @@ ingress.infra.d464.sh/proxied: "true"
 # if left empty, no domain is created.
 # this is only valid on load balancer services.
 # defaults to "".
-service.infra.d464.sh/domain: "mydomain.d64.sh"
+service.infra.d464.sh/domain: "mydomain.d464.sh"
 # expose this port to the public.
 # this will create a port foward on the router to this service's ports.
 # this is only valid on load balancer services.
@@ -80,7 +80,7 @@ spec:
       cpu: "2"
   storage:
     size: 1Gi
-    storageClassName: blackmesa-local
+    storageClassName: blackmesa
 ```
 
 The secret will look like:
