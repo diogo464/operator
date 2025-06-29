@@ -39,6 +39,7 @@ const (
 	ANNOTATION_INGRESS_FORCE_SSL = "ingress.infra.d464.sh/force-ssl"
 	ANNOTATION_INGRESS_PUBLIC    = "ingress.infra.d464.sh/public"
 	ANNOTATION_INGRESS_PROXIED   = "ingress.infra.d464.sh/proxied"
+	ANNOTATION_INGRESS_IGNORE    = "ingress.infra.d464.sh/ignore"
 
 	ANNOTATION_INGRESS_NGINX_FORCE_SSL = "nginx.ingress.kubernetes.io/force-ssl-redirect"
 	// annotation to place on the private ingress to exclude it from external-dns
@@ -105,6 +106,10 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *IngressReconciler) ReconcileIngress(ctx context.Context, ing *netv1.Ingress) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
 	l.Info("Reconcile ingress", "name", ing.Name, "namespace", ing.Namespace, "annotations", ing.ObjectMeta.Annotations)
+
+	if ing.Annotations[ANNOTATION_INGRESS_IGNORE] == "true" {
+		return ctrl.Result{}, nil
+	}
 
 	l.Info("Annotations for "+ing.Name, "annotations", ing.Annotations)
 	ing.Annotations = r.expandAnnotations(ing.Annotations, false)
