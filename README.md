@@ -15,6 +15,9 @@ ingress.infra.d464.sh/force-ssl: "true"
 # otherwise a cname is created that points the domain to our public ip.
 # defaults to "false".
 ingress.infra.d464.sh/proxied: "true"
+# ignore this ingress and skip all processing.
+# defaults to "false".
+ingress.infra.d464.sh/ignore: "true"
 
 ## service annotations
 # domain name that will point to this service's ip address.

@@ -204,7 +204,7 @@ func (r *ServiceReconciler) reconcilePortForwards(ctx context.Context, service *
 		}
 	} else {
 		l.Info("Service " + service.Name + " is not exposed")
-		for _, portforward := range portForwards{
+		for _, portforward := range portForwards {
 			deleteQueue = append(deleteQueue, portforward)
 		}
 	}
