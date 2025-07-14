@@ -158,6 +158,7 @@ func (r *IngressReconciler) ReconcileIngress(ctx context.Context, ing *netv1.Ing
 
 func (r *IngressReconciler) createOrUpdateDomains(ctx context.Context, ingress *netv1.Ingress) error {
 	l := log.FromContext(ctx)
+	l.Info("Starting createOrUpdateDomains", "ingress", ingress.Name, "namespace", ingress.Namespace)
 
 	domain := infrav1.DomainName{
 		ObjectMeta: metav1.ObjectMeta{
@@ -166,15 +167,29 @@ func (r *IngressReconciler) createOrUpdateDomains(ctx context.Context, ingress *
 		},
 	}
 
+	l.Info("Checking ingress rules and load balancer status",
+		"rulesExists", ingress.Spec.Rules != nil,
+		"rulesCount", len(ingress.Spec.Rules),
+		"lbIngressExists", ingress.Status.LoadBalancer.Ingress != nil,
+		"lbIngressCount", len(ingress.Status.LoadBalancer.Ingress))
+
 	if ingress.Spec.Rules == nil || len(ingress.Spec.Rules) == 0 || ingress.Status.LoadBalancer.Ingress == nil || len(ingress.Status.LoadBalancer.Ingress) == 0 {
+		l.Info("Deleting domain due to missing rules or load balancer", "ingress", ingress.Name)
 		return client.IgnoreNotFound(r.Delete(ctx, &domain))
 	}
 
+	var ingressClassName string
+	if ingress.Spec.IngressClassName != nil {
+		ingressClassName = *ingress.Spec.IngressClassName
+	}
+	l.Info("Checking ingress class", "ingressClassName", ingressClassName, "requiredClass", INGRESS_CLASS_PRIVATE)
+
 	if ingress.Spec.IngressClassName != nil && *ingress.Spec.IngressClassName != INGRESS_CLASS_PRIVATE {
-		// only create domain names for private ingresses
+		l.Info("Skipping domain creation - not a private ingress", "ingressClassName", *ingress.Spec.IngressClassName)
 		return nil
 	}
 
+	l.Info("Creating or updating domain", "domain", ingress.Spec.Rules[0].Host, "address", ingress.Status.LoadBalancer.Ingress[0].IP)
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, &domain, func() error {
 		domain.Spec.Domain = ingress.Spec.Rules[0].Host
 		domain.Spec.Address = ingress.Status.LoadBalancer.Ingress[0].IP
@@ -182,8 +197,16 @@ func (r *IngressReconciler) createOrUpdateDomains(ctx context.Context, ingress *
 			l.Error(err, "Failed to set controller reference")
 			return err
 		}
+		l.Info("Successfully configured domain", "domain", domain.Spec.Domain, "address", domain.Spec.Address)
 		return nil
 	})
+
+	if err != nil {
+		l.Error(err, "Failed to create or update domain")
+	} else {
+		l.Info("Successfully created or updated domain", "ingress", ingress.Name)
+	}
+
 	return err
 }
 
