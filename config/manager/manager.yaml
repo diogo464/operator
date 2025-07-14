@@ -84,7 +84,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: git.d464.sh/infra/operator:latest
+        image: cr.d464.sh/infra/operator:latest
         imagePullPolicy: Always
         name: manager
         envFrom:
